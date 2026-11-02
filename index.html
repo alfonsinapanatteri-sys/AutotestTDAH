@@ -109,6 +109,7 @@ var Q=[
 ];
 var TIPS=[['⏰','Dos alarmas por entrega: una semana y dos días antes.'],['⏱️','Temporizador de 15 minutos para arrancar.'],['📑','Una lista de solo 3 tareas por día.'],['🎧','Auriculares o ruido blanco para estudiar.']];
 var STEPS=['Escribirle al PIA por WhatsApp o Instagram','Pedir turno con un profesional de la salud','Llevar este test completo a la consulta','Contarle a una persona de confianza'];
+var ENDPOINT='https://script.google.com/macros/s/AKfycbxFMuIEXg4qyFbjEF8fBiMbZOd7w9iPi1q8TtcvfMAD78f3ifbKvvKI8p_KdbUt60fO/exec', sent=false;
 var A=[null,null,null,null,null,null], cur=0, view='welcome', tipsOn=[0,0,0,0], stepsOn=[0,0,0,0];
 var app=document.getElementById('app');
 function esc(s){return String(s).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
@@ -151,6 +152,7 @@ function results(){
  var rows=Q.map(function(q,i){var hit=A[i]>=q.min;return '<li style="padding:12px 0;border-top:1px solid var(--line)"><div style="font-weight:700">'+(i+1)+'. '+esc(q.t)+'</div><div>Tu respuesta: <strong>'+OPTS[A[i]]+'</strong> '+(hit?'<span class="hit">· coincide con el patrón</span>':'<span style="color:var(--ink-soft)">· no suma</span>')+'</div></li>'}).join('');
  var tips=TIPS.map(function(t){return '<li class="tipli"><span class="em" aria-hidden="true">'+t[0]+'</span><span>'+t[1]+'</span></li>'}).join('');
  var steps=STEPS.map(function(t,i){return '<button class="step" type="button" role="checkbox" aria-checked="'+(stepsOn[i]?'true':'false')+'" aria-pressed="'+(stepsOn[i]?'true':'false')+'" data-step="'+i+'"><span class="mark" aria-hidden="true">'+(stepsOn[i]?'✓':'')+'</span><span>'+t+'</span></button>'}).join('');
+ var shareHtml=ENDPOINT?'<section class="card" aria-labelledby="sh"><h2 id="sh" style="font-size:24px;margin-bottom:8px">Aportá tu resultado de forma anónima</h2><p style="margin:0 0 14px">Si querés, podés enviar tu puntaje y tus respuestas al PIA-UPC para ayudar a pensar apoyos. No se guarda tu nombre, tu mail ni ningún dato que te identifique. Es totalmente opcional: el test funciona igual si no lo hacés.</p><button class="btn ghost" id="send" type="button"'+(sent?' disabled':'')+'>Enviar mi resultado anónimo</button><p id="sendMsg" role="status" style="margin:14px 0 0;font-size:17px">'+(sent?'Listo, enviamos tu resultado anónimo. ¡Gracias!':'')+'</p></section>':'';
  app.innerHTML=
  '<div class="flex flex-col gap-8">'+
  '<section class="card" aria-labelledby="rt"><p class="eyebrow">Tu resultado</p>'+
@@ -159,12 +161,20 @@ function results(){
  '<details style="margin-top:18px"><summary style="cursor:pointer;font-weight:700;min-height:44px;display:flex;align-items:center">Ver mis respuestas</summary><ol style="list-style:none;margin:0;padding:0">'+rows+'</ol></details></section>'+
  '<section aria-labelledby="h1x"><h2 id="h1x" style="font-size:28px;margin-bottom:6px">PARA PROBAR DESDE HOY</h2><ul class="tiplist">'+tips+'</ul></section>'+
  '<section aria-labelledby="h2x"><h2 id="h2x" style="font-size:28px;margin-bottom:14px">MIS PRÓXIMOS PASOS</h2><div class="flex flex-col gap-3" role="group" aria-labelledby="h2x">'+steps+'</div></section>'+
+ shareHtml+
  '<section class="card" style="background:var(--accent-wash);border-color:var(--accent)"><button class="btn" id="pdf" type="button"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#172554" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"/></svg> Descargar Resultados en PDF</button>'+
  '<p id="pdfMsg" role="status" style="margin:14px 0 0;font-size:17px"></p><div id="pdfFallback"></div></section>'+
  '<div><button class="btn ghost" id="again" type="button">Repetir el autotest</button></div></div>';
  app.querySelectorAll('[data-step]').forEach(function(b){b.onclick=function(){var i=+b.dataset.step;stepsOn[i]=stepsOn[i]?0:1;b.setAttribute('aria-checked',stepsOn[i]?'true':'false');b.setAttribute('aria-pressed',stepsOn[i]?'true':'false');b.querySelector('.mark').textContent=stepsOn[i]?'✓':''}});
  document.getElementById('pdf').onclick=makePdf;
- document.getElementById('again').onclick=function(){A=[null,null,null,null,null,null];cur=0;tipsOn=[0,0,0,0];stepsOn=[0,0,0,0];view='welcome';render()};
+ var sb=document.getElementById('send');
+ if(sb)sb.onclick=function(){
+  var m=document.getElementById('sendMsg');if(sent)return;sb.disabled=true;
+  fetch(ENDPOINT,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({score:score(),answers:A})})
+   .then(function(){sent=true;m.textContent='Listo, enviamos tu resultado anónimo. ¡Gracias!'})
+   .catch(function(){sb.disabled=false;m.textContent='No se pudo enviar ahora. Podés intentarlo de nuevo más tarde.'});
+ };
+ document.getElementById('again').onclick=function(){sent=false;A=[null,null,null,null,null,null];cur=0;tipsOn=[0,0,0,0];stepsOn=[0,0,0,0];view='welcome';render()};
 }
 
 function summaryText(){
